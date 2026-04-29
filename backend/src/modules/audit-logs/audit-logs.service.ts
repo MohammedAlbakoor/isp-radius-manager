@@ -7,7 +7,9 @@ export class AuditLogsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: PaginationDto & { entityType?: string; actorId?: string }) {
-    const { page = 1, limit = 20, entityType, actorId } = query;
+    const {  entityType, actorId } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};

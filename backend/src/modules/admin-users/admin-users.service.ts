@@ -9,7 +9,9 @@ export class AdminUsersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: PaginationDto) {
-    const { page = 1, limit = 20, search } = query;
+    const {  search } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where = search

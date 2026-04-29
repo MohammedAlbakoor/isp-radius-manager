@@ -14,7 +14,9 @@ export class SessionsService {
   ) {}
 
   async getActiveSessions(query: PaginationDto) {
-    const { page = 1, limit = 20, search } = query;
+    const { search } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { acctstoptime: null };
@@ -59,7 +61,9 @@ export class SessionsService {
   }
 
   async getSessionHistory(query: PaginationDto & { username?: string }) {
-    const { page = 1, limit = 20, search, username } = query;
+    const { search, username } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};

@@ -13,7 +13,9 @@ export class InternetAccountsService {
   ) {}
 
   async findAll(query: PaginationDto & { status?: string; customerId?: string }) {
-    const { page = 1, limit = 20, search, status, customerId } = query;
+    const { search, status, customerId } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { deletedAt: null };
@@ -66,10 +68,11 @@ export class InternetAccountsService {
     });
     if (existing) throw new ConflictException('Username already exists');
 
+    const { password, ...rest } = dto;
     const account = await this.prisma.internetAccount.create({
       data: {
-        ...dto,
-        passwordEncrypted: encrypt(dto.password),
+        ...rest,
+        passwordEncrypted: encrypt(password),
       },
       include: { customer: true, package: true },
     });

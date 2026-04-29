@@ -8,7 +8,9 @@ export class PaymentsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: PaginationDto & { customerId?: string; status?: string }) {
-    const { page = 1, limit = 20, customerId, status } = query;
+    const {  customerId, status } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
