@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: isp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: isp_radius_db
+      POSTGRES_USER: isp_user
+      POSTGRES_PASSWORD: isp_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - isp_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U isp_user -d isp_radius_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: isp_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - isp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  freeradius:
+    image: freeradius/freeradius-server:latest
+    container_name: isp_freeradius
+    restart: unless-stopped
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    volumes:
+      - ./docker/freeradius/config/radiusd.conf:/etc/freeradius/radiusd.conf:ro
+      - ./docker/freeradius/mods-enabled/sql:/etc/freeradius/mods-enabled/sql:ro
+      - ./docker/freeradius/sites-enabled/default:/etc/freeradius/sites-enabled/default:ro
+      - ./docker/freeradius/sites-enabled/inner-tunnel:/etc/freeradius/sites-enabled/inner-tunnel:ro
+      - ./docker/freeradius/mods-enabled/eap:/etc/freeradius/mods-enabled/eap:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - isp_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: isp_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://isp_user:isp_password@postgres:5432/isp_radius_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-your-encryption-key-min-32-chars-long}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      PORT: 3001
+      RADIUS_SERVER_IP: ${RADIUS_SERVER_IP:-freeradius}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - isp_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: isp_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:3001/api}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - isp_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: isp_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - isp_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  isp_network:
+    driver: bridge

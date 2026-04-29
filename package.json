@@ -1,0 +1,19 @@
+{
+  "name": "isp-radius-manager",
+  "version": "1.0.0",
+  "description": "ISP RADIUS Management Platform for MikroTik and FreeRADIUS",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run start:dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "db:migrate": "cd backend && npx prisma migrate deploy",
+    "db:seed": "cd backend && npx prisma db seed"
+  }
+}
